@@ -34,6 +34,7 @@ typedef enum { false = 0, true = 1 } bool;
 #define MIN_DEAD_TIME 0x018
 #define MAX_DEAD_TIME 0x220
 #define DEAD_TIME_STEP 0x006
+#define INIT_DEAD_TIME 0x0b4                // 30 ns
 
 #define PERIOD 0x0714
 #define HALF_PERIOD 0x038A
@@ -53,7 +54,7 @@ HRTIM_HandleTypeDef hhrtim1;
 
 /* USER CODE BEGIN PV */
 int PushButton = 0 ;      				 // indicate in main which button was used
-const uint32_t ButtonDebounce = 1000;	 // Button debounce constant
+const uint32_t ButtonDebounce = 500;	 // Button debounce constant
 uint32_t lastPressTime = 0;				 // Button debounce variable
 int DeadTime = 0x018; 				     // 5ns default dead time
 float DutyCycle = 0.5f; 			     // 50% duty cycle as default
@@ -423,8 +424,8 @@ static void MX_HRTIM1_Init(void)
     Error_Handler();
   }
   pOutputCfg.Polarity = HRTIM_OUTPUTPOLARITY_HIGH;
-  pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMPER;
-  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP1;
+  pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMCMP2;
+  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP3;
   pOutputCfg.IdleMode = HRTIM_OUTPUTIDLEMODE_NONE;
   pOutputCfg.IdleLevel = HRTIM_OUTPUTIDLELEVEL_INACTIVE;
   pOutputCfg.FaultLevel = HRTIM_OUTPUTFAULTLEVEL_NONE;
@@ -434,16 +435,19 @@ static void MX_HRTIM1_Init(void)
   {
     Error_Handler();
   }
+  pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMPER;
+  pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP1;
   if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_D, HRTIM_OUTPUT_TD1, &pOutputCfg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  pOutputCfg.SetSource = HRTIM_OUTPUTSET_MASTERPER;
+  if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA2, &pOutputCfg) != HAL_OK)
   {
     Error_Handler();
   }
   pOutputCfg.SetSource = HRTIM_OUTPUTSET_TIMCMP2;
   pOutputCfg.ResetSource = HRTIM_OUTPUTRESET_TIMCMP3;
-  if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_A, HRTIM_OUTPUT_TA2, &pOutputCfg) != HAL_OK)
-  {
-    Error_Handler();
-  }
   if (HAL_HRTIM_WaveformOutputConfig(&hhrtim1, HRTIM_TIMERINDEX_TIMER_D, HRTIM_OUTPUT_TD2, &pOutputCfg) != HAL_OK)
   {
     Error_Handler();
@@ -617,7 +621,7 @@ void DEC_DEAD_TIME(void)
 
 void RST_PWM(void)
 {
-	DeadTime = MIN_DEAD_TIME;
+	DeadTime = INIT_DEAD_TIME;
 	HAL_HRTIM_WaveformCounterStop(&hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_D);
 	HAL_HRTIM_SoftwareReset(&hhrtim1, HRTIM_TIMERID_TIMER_A | HRTIM_TIMERID_TIMER_D);
 
